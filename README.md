@@ -312,6 +312,8 @@ Welcome to Ubuntu 16.04.5 LTS (GNU/Linux 4.4.0-116-generic x86_64)
 You have new mail.
 Last login: Fri Jan 11 06:18:50 2019
 help@help:~$
+help@help:~$ cat user.txt
+0f25a3fbc3ef889f3e3abee1120035dc
 ```
 
 nice.
@@ -337,8 +339,6 @@ drwxrwxr-x 290 help help 12288 Nov 23  2021 .npm
 -rw-r--r--   1 help help   655 Nov 27  2018 .profile
 -rw-rw-r--   1 help help    66 Nov 28  2018 .selected_editor
 -rw-r--r--   1 root root    33 Aug 11 14:41 user.txt
-help@help:~$ cat user.txt
-0f25a3fbc3ef889f3e3abee1120035dc
 help@help:~$ sudo -l
 [sudo] password for help:
 Sorry, user help may not run sudo on help.
@@ -368,6 +368,314 @@ help@help:~$ crontab -l
 @reboot /usr/local/bin/forever start /home/help/help/dist/bundle.js
 ```
 
+`forever` looks like some attempt at initv/systemd that npm uses
+
+```
+You have new mail.
+Last login: Fri Aug 12 07:27:35 2022 from 10.10.14.9
+help@help:~$
+help@help:~$ mail
+s-nail version v14.8.6.  Type ? for help.
+"/var/mail/help": 43 messages 1 new 42 unread
+ U 41 Cron Daemon        Thu Aug 11 14:41   26/981   Cron <help@help> /usr/local/bin/forever start /home/help/help/dist/bundle.js
+ O 42 help               Thu Aug 11 18:23   19/621   *** SECURITY information for help ***
+>N 43 Mail Delivery Syst Thu Aug 11 18:27   54/1540  Mail delivery failed: returning message to sender
+? 43
+[-- Message 43 -- 54 lines, 1540 bytes --]:
+From MAILER-DAEMON Thu Aug 11 18:27:17 2022
+From: Mail Delivery System <Mailer-Daemon@ubuntu>
+To: help@ubuntu
+Subject: Mail delivery failed: returning message to sender
+Message-Id: <E1oMJSH-00057q-Cx@help>
+Date: Thu, 11 Aug 2022 18:27:17 -0700
+
+[-- #1 10/297 text/plain, 7bit, us-ascii --]
+
+This message was created automatically by mail delivery software.
+
+A message that you sent could not be delivered to one or more of its
+recipients. This is a permanent error. The following address(es) failed:
+
+  victim@localhost
+    Unrouteable address
+
+[-- #2 8/135 message/delivery-status, 7bit, US-ASCII --]
+
+
+[-- #3 14/325 message/rfc822 --]
+
+Message-Id: <E1oMJSE-00057m-CM@help>
+From: help <help@ubuntu>
+Date: Thu, 11 Aug 2022 18:27:16 -0700
+
+dfddd
+
+?
+```
+
+`victim@localhost`, but the last login IP was 10.10.14.9, and that wasn't us
+
+combined with
+```
+╔══════════╣ SUID - Check easy privesc, exploits and write perms
+╚ https://book.hacktricks.xyz/linux-hardening/privilege-escalation#sudo-and-suid
+-rwsr-xr-x 1 root root 1015K Feb 10  2018 /usr/sbin/exim4
+
+...
+
+╔══════════╣ Active Ports
+╚ https://book.hacktricks.xyz/linux-hardening/privilege-escalation#open-ports
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -
+tcp        0      0 127.0.0.1:25            0.0.0.0:*               LISTEN      -
+tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN      -
+tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN      -
+tcp6       0      0 :::22                   :::*                    LISTEN      -
+tcp6       0      0 :::3000                 :::*                    LISTEN      812/nodejs
+tcp6       0      0 ::1:25                  :::*                    LISTEN      -
+
+...
+
+Debian-+   1267  0.0  0.3  55872  3204 ?        Ss   Aug11   0:00 /usr/sbin/exim4 -bd -q30m
+
+```
+
+thinking mail is the way up.
+
+```
+? 44
+[-- Message 44 -- 18 lines, 610 bytes --]:
+From help@ubuntu Fri Aug 12 07:27:52 2022
+To: root@ubuntu
+Subject: *** SECURITY information for help ***
+From: help <help@ubuntu>
+Message-Id: <E1oMVdg-000BL0-Qt@help>
+Date: Fri, 12 Aug 2022 07:27:52 -0700
+
+help : Aug 12 07:27:52 : help : 1 incorrect password attempt ; TTY=pts/0 ; PWD=/home/help ; USER=root ; COMMAND=list
+
+
+?
+help@help:~$ date
+Fri Aug 12 07:40:45 PDT 2022
+```
+
+still the only user logged in, and didn't try and su/sudo commands. also - why are we getting mail to `root@ubuntu`?
+
+```
+help@help:~$ find / -iname '*exim*' 2>/dev/null | grep -v doc | grep -v dpkg
+/usr/sbin/exim_tidydb
+/usr/sbin/exim_dbmbuild
+/usr/sbin/update-exim4defaults
+/usr/sbin/exim_fixdb
+/usr/sbin/update-exim4.conf.template
+/usr/sbin/syslog2eximlog
+/usr/sbin/exim
+/usr/sbin/exim4
+/usr/sbin/eximstats
+/usr/sbin/exim_lock
+/usr/sbin/update-exim4.conf
+/usr/sbin/exim_checkaccess
+/usr/sbin/exim_convert4r4
+/usr/sbin/exim_dumpdb
+/usr/lib/exim4
+/usr/lib/exim4/exim4
+/usr/share/man/man8/exim_tidydb.8.gz
+/usr/share/man/man8/update-exim4.conf.template.8.gz
+/usr/share/man/man8/exim4.8.gz
+/usr/share/man/man8/syslog2eximlog.8.gz
+/usr/share/man/man8/exim_convert4r4.8.gz
+/usr/share/man/man8/exim_db.8.gz
+/usr/share/man/man8/update-exim4.conf.8.gz
+/usr/share/man/man8/exim_lock.8.gz
+/usr/share/man/man8/eximstats.8.gz
+/usr/share/man/man8/exim_dumpdb.8.gz
+/usr/share/man/man8/exim.8.gz
+/usr/share/man/man8/exim_checkaccess.8.gz
+/usr/share/man/man8/exim_dbmbuild.8.gz
+/usr/share/man/man8/update-exim4defaults.8.gz
+/usr/share/man/man8/exim_fixdb.8.gz
+/usr/share/man/man5/exim4_sender_local_deny_exceptions.5.gz
+/usr/share/man/man5/exim4_exim_key.5.gz
+/usr/share/man/man5/exim4_local_host_blacklist.5.gz
+/usr/share/man/man5/exim4_passwd.5.gz
+/usr/share/man/man5/exim4_exim_crt.5.gz
+/usr/share/man/man5/update-exim4.conf.conf.5.gz
+/usr/share/man/man5/exim4_local_sender_callout.5.gz
+/usr/share/man/man5/exim4_hubbed_hosts.5.gz
+/usr/share/man/man5/exim4-config_files.5.gz
+/usr/share/man/man5/exim4_passwd_client.5.gz
+/usr/share/man/man5/exim4_local_rcpt_callout.5.gz
+/usr/share/man/man5/exim4_local_domain_dnsbl_whitelist.5.gz
+/usr/share/man/man5/exim4_host_local_deny_exceptions.5.gz
+/usr/share/man/man5/exim4_local_sender_blacklist.5.gz
+/usr/share/lintian/overrides/exim4-config
+/usr/share/lintian/overrides/exim4-daemon-light
+/usr/share/bug/exim4-config
+/usr/share/bug/exim4-base
+/usr/share/bug/exim4
+/usr/share/bug/exim4-daemon-light
+/var/log/exim4
+/var/lib/exim4
+/var/spool/exim4
+/etc/rc6.d/K01exim4
+/etc/logrotate.d/exim4-base
+/etc/logrotate.d/exim4-paniclog
+/etc/default/exim4
+/etc/init.d/exim4
+/etc/ppp/ip-up.d/exim4
+/etc/rc0.d/K01exim4
+/etc/exim4
+/etc/exim4/update-exim4.conf.conf
+/etc/exim4/exim4.conf.template
+/etc/exim4/conf.d/rewrite/00_exim4-config_header
+/etc/exim4/conf.d/rewrite/31_exim4-config_rewriting
+/etc/exim4/conf.d/router/900_exim4-config_local_user
+/etc/exim4/conf.d/router/300_exim4-config_real_local
+/etc/exim4/conf.d/router/850_exim4-config_lowuid
+/etc/exim4/conf.d/router/400_exim4-config_system_aliases
+/etc/exim4/conf.d/router/500_exim4-config_hubuser
+/etc/exim4/conf.d/router/00_exim4-config_header
+/etc/exim4/conf.d/router/150_exim4-config_hubbed_hosts
+/etc/exim4/conf.d/router/200_exim4-config_primary
+/etc/exim4/conf.d/router/100_exim4-config_domain_literal
+/etc/exim4/conf.d/router/700_exim4-config_procmail
+/etc/exim4/conf.d/router/800_exim4-config_maildrop
+/etc/exim4/conf.d/router/600_exim4-config_userforward
+/etc/exim4/conf.d/acl/20_exim4-config_local_deny_exceptions
+/etc/exim4/conf.d/acl/00_exim4-config_header
+/etc/exim4/conf.d/acl/30_exim4-config_check_rcpt
+/etc/exim4/conf.d/acl/30_exim4-config_check_mail
+/etc/exim4/conf.d/acl/40_exim4-config_check_data
+/etc/exim4/conf.d/main/90_exim4-config_log_selector
+/etc/exim4/conf.d/main/03_exim4-config_tlsoptions
+/etc/exim4/conf.d/main/01_exim4-config_listmacrosdefs
+/etc/exim4/conf.d/main/02_exim4-config_options
+/etc/exim4/conf.d/auth/00_exim4-config_header
+/etc/exim4/conf.d/auth/30_exim4-config_examples
+/etc/exim4/conf.d/transport/35_exim4-config_address_directory
+/etc/exim4/conf.d/transport/00_exim4-config_header
+/etc/exim4/conf.d/transport/30_exim4-config_address_pipe
+/etc/exim4/conf.d/transport/30_exim4-config_maildir_home
+/etc/exim4/conf.d/transport/30_exim4-config_remote_smtp_smarthost
+/etc/exim4/conf.d/transport/30_exim4-config_procmail_pipe
+/etc/exim4/conf.d/transport/10_exim4-config_transport-macros
+/etc/exim4/conf.d/transport/30_exim4-config_mail_spool
+/etc/exim4/conf.d/transport/30_exim4-config_address_file
+/etc/exim4/conf.d/transport/30_exim4-config_remote_smtp
+/etc/exim4/conf.d/transport/30_exim4-config_address_reply
+/etc/exim4/conf.d/transport/30_exim4-config_maildrop_pipe
+/etc/exim4/conf.d/retry/00_exim4-config_header
+/etc/exim4/conf.d/retry/30_exim4-config
+/etc/rc2.d/S04exim4
+/etc/cron.daily/exim4-base
+/etc/rc3.d/S04exim4
+/etc/rc1.d/K01exim4
+/etc/rc5.d/S04exim4
+/etc/rc4.d/S04exim4
+/run/exim4
+/run/systemd/generator.late/exim4.service
+/run/systemd/generator.late/graphical.target.wants/exim4.service
+/run/systemd/generator.late/multi-user.target.wants/exim4.service
+/sys/fs/cgroup/devices/system.slice/exim4.service
+/sys/fs/cgroup/systemd/system.slice/exim4.service
+```
+
+```
+help@help:/etc/exim4$ nc localhost 25
+220 help ESMTP Exim 4.86_2 Ubuntu Fri, 12 Aug 2022 07:54:33 -0700
+```
+
+```
+help@help:/etc/exim4$ exim --version
+Exim version 4.86_2 #2 built 10-Feb-2018 19:18:40
+Copyright (c) University of Cambridge, 1995 - 2015
+(c) The Exim Maintainers and contributors in ACKNOWLEDGMENTS file, 2007 - 2015
+Berkeley DB: Berkeley DB 5.3.28: (September  9, 2013)
+Support for: crypteq iconv() IPv6 GnuTLS move_frozen_messages DKIM DNSSEC PRDR OCSP
+Lookups (built-in): lsearch wildlsearch nwildlsearch iplsearch cdb dbm dbmjz dbmnz dnsdb dsearch nis nis0 passwd
+Authenticators: cram_md5 plaintext
+Routers: accept dnslookup ipliteral manualroute queryprogram redirect
+Transports: appendfile/maildir/mailstore autoreply lmtp pipe smtp
+Fixed never_users: 0
+Size of off_t: 8
+Configuration file is /var/lib/exim4/config.autogenerated
+
+```
+
+the `Support for:` line does not include 'Perl', so we can't use `~/git/searchsploit/exploits/linux/local/39549.txt`
+
+
+### suggested exploits
+
+```
+  [1] af_packet
+      CVE-2016-8655
+      Source: http://www.exploit-db.com/exploits/40871
+  [2] exploit_x
+      CVE-2018-14665
+      Source: http://www.exploit-db.com/exploits/45697
+  [3] get_rekt
+      CVE-2017-16695
+      Source: http://www.exploit-db.com/exploits/45010
+```
+
+
+af_packet, chocobo_root.c
+```
+help@help:~$ ./a.out
+./a.out: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found (required by ./a.out)
+./a.out: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.33' not found (required by ./a.out)
+./a.out: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by ./a.out)
+```
+
+exploit_x
+```
+help@help:~$ bash foo.sh
+[+] OpenBSD 6.4-stable local root exploit
+foo.sh: line 12: Xorg: command not found
+^C
+```
+
+get_rekt
+```
+help@help:~$ ./a.out
+./a.out: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by ./a.out)
+```
+
+libc is out of date
+```
+help@help:~$ ls /lib/x86_64-linux-gnu/libc.so.6
+lrwxrwxrwx 1 root root 12 Nov 27  2018 /lib/x86_64-linux-gnu/libc.so.6 -> libc-2.23.so
+```
+
+### it's got to be the mail
+
+```
+help@help:~$ cat /var/log/exim4/mainlog
+...
+2022-05-04 08:17:54 End queue run: pid=1163
+2022-08-14 11:48:58 1oNIfS-0000D1-L6 <= help@ubuntu U=help P=local S=829
+2022-08-14 11:48:58 1oNIfS-0000D1-L6 => help <help@ubuntu> R=local_user T=mail_spool
+2022-08-14 11:48:58 1oNIfS-0000D1-L6 Completed
+2022-08-14 11:49:01 exim 4.86_2 daemon started: pid=1266, -q30m, listening for SMTP on [127.0.0.1]:25 [::1]:25
+2022-08-14 11:49:01 Start queue run: pid=1270
+2022-08-14 11:49:01 End queue run: pid=1270
+2022-08-14 11:51:45 1oNIi9-00024j-V2 <= help@ubuntu U=help P=local S=468
+2022-08-14 11:51:45 1oNIi9-00024j-V2 => help <root@ubuntu> R=local_user T=mail_spool
+2022-08-14 11:51:45 1oNIi9-00024j-V2 Completed
+2022-08-14 11:59:20 1oNIpU-0004xH-R1 <= help@ubuntu U=help P=local S=459
+2022-08-14 11:59:20 1oNIpU-0004xH-R1 => help <root@ubuntu> R=local_user T=mail_spool
+2022-08-14 11:59:20 1oNIpU-0004xH-R1 Completed
+2022-08-14 12:19:01 Start queue run: pid=19203
+2022-08-14 12:19:01 End queue run: pid=19203
+2022-08-14 12:49:01 Start queue run: pid=19248
+2022-08-14 12:49:01 End queue run: pid=19248
+help@help:~$ ps aux | grep 1266
+Debian-+   1266  0.0  0.2  55872  2680 ?        Ss   11:49   0:00 /usr/sbin/exim4 -bd -q30m
+
+```
+
+googling around
 
 ## flag
 ```
