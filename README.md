@@ -677,6 +677,164 @@ Debian-+   1266  0.0  0.2  55872  2680 ?        Ss   11:49   0:00 /usr/sbin/exim
 
 googling around
 
+### coming back again
+
+linpeas
+
+```
+╔══════════╣ Unmounted file-system?
+╚ Check if you can mount unmounted devices
+UUID=2c0651e2-31d6-496e-b2bc-1583ee4d7730 /               ext4    errors=remount-ro 0       1
+/dev/sda2        none            swap    sw              0       0
+/dev/fd0        /media/floppy0  auto    rw,user,noauto,exec,utf8 0       0
+
+...
+╔══════════╣ Analyzing .service files
+╚ https://book.hacktricks.xyz/linux-hardening/privilege-escalation#services
+/etc/systemd/system/multi-user.target.wants/networking.service is executing some relative path
+/etc/systemd/system/network-online.target.wants/networking.service is executing some relative path
+/lib/systemd/system/emergency.service is executing some relative path
+
+...
+
+╔══════════╣ Active Ports
+╚ https://book.hacktricks.xyz/linux-hardening/privilege-escalation#open-ports
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -
+tcp        0      0 127.0.0.1:25            0.0.0.0:*               LISTEN      -
+tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN      -
+tcp6       0      0 :::22                   :::*                    LISTEN      -
+tcp6       0      0 :::3000                 :::*                    LISTEN      800/nodejs
+tcp6       0      0 ::1:25                  :::*                    LISTEN      -
+tcp6       0      0 :::80                   :::*                    LISTEN      -
+
+...
+╔══════════╣ Analyzing Cache Vi Files (limit 70)
+-rw-r--r-- 1 root root 1024 Nov 27  2018 /etc/apache2/.apache2.conf.swp
+
+
+```
+
+```
+>N 42 help               Sat Jan 07 08:08   18/610   *** SECURITY information for help ***
+? 42
+[-- Message 42 -- 18 lines, 610 bytes --]:
+From help@ubuntu Sat Jan 07 08:08:11 2023
+To: root@ubuntu
+Subject: *** SECURITY information for help ***
+From: help <help@ubuntu>
+Message-Id: <E1pEBjv-00025Q-K9@help>
+Date: Sat, 07 Jan 2023 08:08:11 -0800
+
+help : Jan  7 08:08:11 : help : 1 incorrect password attempt ; TTY=pts/1 ; PWD=/home/help ; USER=root ; COMMAND=list
+```
+
+```
+help@help:~$ screen -v
+Screen version 4.03.01 (GNU) 28-Jun-15
+
+```
+
+looking at exploitdb
+
+```
+GNU Screen 3.9.x Braille Module - Local Buffer Overflow                                                                                                     | unix/local/21414.c
+GNU Screen 4.5.0 - Local Privilege Escalation                                                                                                               | linux/local/41154.sh
+GNU Screen 4.5.0 - Local Privilege Escalation (PoC)                                                                                                         | linux/local/41152.txt
+...
+Screen 4.0.3 (OpenBSD) - Local Authentication Bypass                                                                                                        | linux/local/4028.txt
+```
+
+`4028.txt` is a no go, as is `41154.sh`, and `21414.c` is not applicable
+
+
+```
+help@help:/var/www/html/support$ mail help@help
+Subject: foobar
+this is a test
+
+
+.
+help@help:/var/www/html/support$ mail root@help
+Subject: fizzbuzz
+this is also a test
+
+.
+
+help@help:/var/www/html/support$ mail
+...
+>N 44 help               Sat Jan 07 12:44   19/468   foobar
+ N 45 help               Sat Jan 07 12:44   18/474   fizzbuzz
+? 4
+[-- Message  4 -- 19 lines, 629 bytes --]:
+From help@ubuntu Wed Nov 28 11:33:27 2018
+To: root@ubuntu
+Subject: *** SECURITY information for ubuntu ***
+From: help <help@ubuntu>
+Message-Id: <E1gS5aR-0000OX-83@ubuntu>
+Date: Wed, 28 Nov 2018 11:33:27 -0800
+
+ubuntu : Nov 28 11:33:26 : help : 1 incorrect password attempt ; TTY=pts/0 ; PWD=/home/help ; USER=root ; COMMAND=list
+
+
+? 5
+[-- Message  5 -- 19 lines, 629 bytes --]:
+From help@ubuntu Wed Nov 28 11:33:29 2018
+To: root@ubuntu
+Subject: *** SECURITY information for ubuntu ***
+From: help <help@ubuntu>
+Message-Id: <E1gS5aS-0000Ok-PP@ubuntu>
+Date: Wed, 28 Nov 2018 11:33:28 -0800
+
+ubuntu : Nov 28 11:33:28 : help : 1 incorrect password attempt ; TTY=pts/0 ; PWD=/home/help ; USER=root ; COMMAND=list
+
+
+?
+```
+
+so looks like whatever we mail to, it gets to `help@ubuntu`
+
+
+```
+help@help:~$ date
+Sat Jan  7 12:43:05 PST 2023
+help@help:~$ tail -f /var/log/exim4/mainlog 
+2023-01-07 10:54:51 1pEELD-00054E-Jl Completed
+2023-01-07 10:57:53 Start queue run: pid=19560
+2023-01-07 10:57:53 End queue run: pid=19560
+2023-01-07 11:01:31 SIGINT received while reading local message
+2023-01-07 11:27:53 Start queue run: pid=19624
+2023-01-07 11:27:53 End queue run: pid=19624
+2023-01-07 11:57:53 Start queue run: pid=19668
+2023-01-07 11:57:53 End queue run: pid=19668
+2023-01-07 12:27:53 Start queue run: pid=19715
+2023-01-07 12:27:53 End queue run: pid=19715
+
+
+2023-01-07 12:44:18 1pEG38-0005AL-6K <= help@ubuntu U=help P=local S=328
+2023-01-07 12:44:18 1pEG38-0005AL-6K => help <help@help> R=local_user T=mail_spool
+2023-01-07 12:44:18 1pEG38-0005AL-6K Completed
+
+2023-01-07 12:44:39 1pEG3T-0005AR-0v <= help@ubuntu U=help P=local S=334
+2023-01-07 12:44:39 1pEG3T-0005AR-0v => help <root@help> R=local_user T=mail_spool
+2023-01-07 12:44:39 1pEG3T-0005AR-0v Completed
+2023-01-07 12:46:53 1pEG5d-0005Ah-F4 <= help@ubuntu U=help P=local S=313
+2023-01-07 12:46:53 1pEG5d-0005Ah-F4 => help <root@help> R=local_user T=mail_spool
+2023-01-07 12:46:53 1pEG5d-0005Ah-F4 Completed
+
+
+2023-01-07 12:57:53 Start queue run: pid=19892
+2023-01-07 12:57:53 End queue run: pid=19892
+2023-01-07 13:27:53 Start queue run: pid=19939
+2023-01-07 13:27:53 End queue run: pid=19939
+2023-01-07 13:57:53 Start queue run: pid=19985
+2023-01-07 13:57:53 End queue run: pid=19985
+2023-01-07 14:27:53 Start queue run: pid=20032
+2023-01-07 14:27:53 End queue run: pid=20032
+^C
+help@help:~$ date
+Sat Jan  7 14:49:00 PST 2023
+```
+
 ## flag
 ```
 user:
